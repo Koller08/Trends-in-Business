@@ -1,0 +1,377 @@
+---
+title: "Insurance Cross Sell"
+author: "Cathy Zheng"
+date: "11/6/2020"
+output: pdf_document
+---
+Load training data and libraries
+```{r}
+library(dplyr)
+library(caret)
+library(imbalance)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(ROCR)
+library(pROC)
+library(ROSE)
+set.seed(159)
+ins <- read.csv('train.csv')
+ins <- ins %>% mutate(Vehicle_Age = as.factor(Vehicle_Age),
+                      Gender = as.factor(Gender),
+                      Driving_License = as.factor(Driving_License),
+                      Previously_Insured = as.factor(Previously_Insured),
+                      Vehicle_Damage = as.factor(Vehicle_Damage),
+                      Response = as.factor(Response))
+length(table(ins$Policy_Sales_Channel))
+ins_binary <- ins %>% mutate(Region_0 = ifelse(Region_Code == 0, 1, 0),
+                             Region_1 = ifelse(Region_Code == 1, 1, 0),
+                             Region_2 = ifelse(Region_Code == 2, 1, 0),
+                             Region_3 = ifelse(Region_Code == 3, 1, 0),
+                             Region_4 = ifelse(Region_Code == 4, 1, 0),
+                             Region_5 = ifelse(Region_Code == 5, 1, 0),
+                             Region_6 = ifelse(Region_Code == 6, 1, 0),
+                             Region_7 = ifelse(Region_Code == 7, 1, 0),
+                             Region_8 = ifelse(Region_Code == 8, 1, 0),
+                             Region_9 = ifelse(Region_Code == 9, 1, 0),
+                             Region_10 = ifelse(Region_Code == 10, 1, 0),
+                             Region_11 = ifelse(Region_Code == 11, 1, 0),
+                             Region_12 = ifelse(Region_Code == 12, 1, 0),
+                             Region_13 = ifelse(Region_Code == 13, 1, 0),
+                             Region_14 = ifelse(Region_Code == 14, 1, 0),
+                             Region_15 = ifelse(Region_Code == 15, 1, 0),
+                             Region_16 = ifelse(Region_Code == 16, 1, 0),
+                             Region_17 = ifelse(Region_Code == 17, 1, 0),
+                             Region_18 = ifelse(Region_Code == 18, 1, 0),
+                             Region_19 = ifelse(Region_Code == 19, 1, 0),
+                             Region_20 = ifelse(Region_Code == 20, 1, 0),
+                             Region_21 = ifelse(Region_Code == 21, 1, 0),
+                             Region_22 = ifelse(Region_Code == 22, 1, 0),
+                             Region_23 = ifelse(Region_Code == 23, 1, 0),
+                             Region_24 = ifelse(Region_Code == 24, 1, 0),
+                             Region_25 = ifelse(Region_Code == 25, 1, 0),
+                             Region_26 = ifelse(Region_Code == 26, 1, 0),
+                             Region_27 = ifelse(Region_Code == 27, 1, 0),
+                             Region_28 = ifelse(Region_Code == 28, 1, 0),
+                             Region_29 = ifelse(Region_Code == 29, 1, 0),
+                             Region_30 = ifelse(Region_Code == 30, 1, 0),
+                             Region_31 = ifelse(Region_Code == 31, 1, 0),
+                             Region_32 = ifelse(Region_Code == 32, 1, 0),
+                             Region_33 = ifelse(Region_Code == 33, 1, 0),
+                             Region_34 = ifelse(Region_Code == 34, 1, 0),
+                             Region_35 = ifelse(Region_Code == 35, 1, 0),
+                             Region_36 = ifelse(Region_Code == 36, 1, 0),
+                             Region_37 = ifelse(Region_Code == 37, 1, 0),
+                             Region_38 = ifelse(Region_Code == 38, 1, 0),
+                             Region_39 = ifelse(Region_Code == 39, 1, 0),
+                             Region_40 = ifelse(Region_Code == 40, 1, 0),
+                             Region_41 = ifelse(Region_Code == 41, 1, 0),
+                             Region_42 = ifelse(Region_Code == 42, 1, 0),
+                             Region_43 = ifelse(Region_Code == 43, 1, 0),
+                             Region_44 = ifelse(Region_Code == 44, 1, 0),
+                             Region_45 = ifelse(Region_Code == 45, 1, 0),
+                             Region_46 = ifelse(Region_Code == 46, 1, 0),
+                             Region_47 = ifelse(Region_Code == 47, 1, 0),
+                             Region_48 = ifelse(Region_Code == 48, 1, 0),
+                             Region_49 = ifelse(Region_Code == 49, 1, 0),
+                             Region_50 = ifelse(Region_Code == 50, 1, 0),
+                             Region_51 = ifelse(Region_Code == 51, 1, 0),
+                             Region_52 = ifelse(Region_Code == 52, 1, 0),
+                             Policy_Sales_Channel_1 = ifelse(Policy_Sales_Channel == 1, 1, 0),
+                             Policy_Sales_Channel_2 = ifelse(Policy_Sales_Channel == 2, 1, 0),
+                             Policy_Sales_Channel_3 = ifelse(Policy_Sales_Channel == 3, 1, 0),
+                             Policy_Sales_Channel_4 = ifelse(Policy_Sales_Channel == 4, 1, 0),
+                             Policy_Sales_Channel_5 = ifelse(Policy_Sales_Channel == 5, 1, 0),
+                             Policy_Sales_Channel_6 = ifelse(Policy_Sales_Channel == 6, 1, 0),
+                             Policy_Sales_Channel_7 = ifelse(Policy_Sales_Channel == 7, 1, 0),
+                             Policy_Sales_Channel_8 = ifelse(Policy_Sales_Channel == 8, 1, 0),
+                             Policy_Sales_Channel_9 = ifelse(Policy_Sales_Channel == 9, 1, 0),
+                             Policy_Sales_Channel_10 = ifelse(Policy_Sales_Channel == 10, 1, 0),
+                             Policy_Sales_Channel_11 = ifelse(Policy_Sales_Channel == 11, 1, 0),
+                             Policy_Sales_Channel_12 = ifelse(Policy_Sales_Channel == 12, 1, 0),
+                             Policy_Sales_Channel_13 = ifelse(Policy_Sales_Channel == 13, 1, 0),
+                             Policy_Sales_Channel_14 = ifelse(Policy_Sales_Channel == 14, 1, 0),
+                             Policy_Sales_Channel_15 = ifelse(Policy_Sales_Channel == 15, 1, 0),
+                             Policy_Sales_Channel_16 = ifelse(Policy_Sales_Channel == 16, 1, 0),
+                             Policy_Sales_Channel_17 = ifelse(Policy_Sales_Channel == 17, 1, 0),
+                             Policy_Sales_Channel_18 = ifelse(Policy_Sales_Channel == 18, 1, 0),
+                             Policy_Sales_Channel_19 = ifelse(Policy_Sales_Channel == 19, 1, 0),
+                             Policy_Sales_Channel_20 = ifelse(Policy_Sales_Channel == 20, 1, 0),
+                             Policy_Sales_Channel_21 = ifelse(Policy_Sales_Channel == 21, 1, 0),
+                             Policy_Sales_Channel_22 = ifelse(Policy_Sales_Channel == 22, 1, 0),
+                             Policy_Sales_Channel_23 = ifelse(Policy_Sales_Channel == 23, 1, 0),
+                             Policy_Sales_Channel_24 = ifelse(Policy_Sales_Channel == 24, 1, 0),
+                             Policy_Sales_Channel_25 = ifelse(Policy_Sales_Channel == 25, 1, 0),
+                             Policy_Sales_Channel_26 = ifelse(Policy_Sales_Channel == 26, 1, 0),
+                             Policy_Sales_Channel_27 = ifelse(Policy_Sales_Channel == 27, 1, 0),
+                             Policy_Sales_Channel_28 = ifelse(Policy_Sales_Channel == 28, 1, 0),
+                             Policy_Sales_Channel_29 = ifelse(Policy_Sales_Channel == 29, 1, 0),
+                             Policy_Sales_Channel_30 = ifelse(Policy_Sales_Channel == 30, 1, 0),
+                             Policy_Sales_Channel_31 = ifelse(Policy_Sales_Channel == 31, 1, 0),
+                             Policy_Sales_Channel_32 = ifelse(Policy_Sales_Channel == 32, 1, 0),
+                             Policy_Sales_Channel_33 = ifelse(Policy_Sales_Channel == 33, 1, 0),
+                             Policy_Sales_Channel_34 = ifelse(Policy_Sales_Channel == 34, 1, 0),
+                             Policy_Sales_Channel_35 = ifelse(Policy_Sales_Channel == 35, 1, 0),
+                             Policy_Sales_Channel_36 = ifelse(Policy_Sales_Channel == 36, 1, 0),
+                             Policy_Sales_Channel_37 = ifelse(Policy_Sales_Channel == 37, 1, 0),
+                             Policy_Sales_Channel_38 = ifelse(Policy_Sales_Channel == 38, 1, 0),
+                             Policy_Sales_Channel_39 = ifelse(Policy_Sales_Channel == 39, 1, 0),
+                             Policy_Sales_Channel_40 = ifelse(Policy_Sales_Channel == 40, 1, 0),
+                             Policy_Sales_Channel_41 = ifelse(Policy_Sales_Channel == 41, 1, 0),
+                             Policy_Sales_Channel_42 = ifelse(Policy_Sales_Channel == 42, 1, 0),
+                             Policy_Sales_Channel_43 = ifelse(Policy_Sales_Channel == 43, 1, 0),
+                             Policy_Sales_Channel_44 = ifelse(Policy_Sales_Channel == 44, 1, 0),
+                             Policy_Sales_Channel_45 = ifelse(Policy_Sales_Channel == 45, 1, 0),
+                             Policy_Sales_Channel_46 = ifelse(Policy_Sales_Channel == 46, 1, 0),
+                             Policy_Sales_Channel_47 = ifelse(Policy_Sales_Channel == 47, 1, 0),
+                             Policy_Sales_Channel_48 = ifelse(Policy_Sales_Channel == 48, 1, 0),
+                             Policy_Sales_Channel_49 = ifelse(Policy_Sales_Channel == 49, 1, 0),
+                             Policy_Sales_Channel_50 = ifelse(Policy_Sales_Channel == 50, 1, 0),
+                             Policy_Sales_Channel_51 = ifelse(Policy_Sales_Channel == 51, 1, 0),
+                             Policy_Sales_Channel_52 = ifelse(Policy_Sales_Channel == 52, 1, 0),
+                             Policy_Sales_Channel_53 = ifelse(Policy_Sales_Channel == 53, 1, 0),
+                             Policy_Sales_Channel_54 = ifelse(Policy_Sales_Channel == 54, 1, 0),
+                             Policy_Sales_Channel_55 = ifelse(Policy_Sales_Channel == 55, 1, 0),
+                             Policy_Sales_Channel_56 = ifelse(Policy_Sales_Channel == 56, 1, 0),
+                             Policy_Sales_Channel_57 = ifelse(Policy_Sales_Channel == 57, 1, 0),
+                             Policy_Sales_Channel_58 = ifelse(Policy_Sales_Channel == 58, 1, 0),
+                             Policy_Sales_Channel_59 = ifelse(Policy_Sales_Channel == 59, 1, 0),
+                             Policy_Sales_Channel_60 = ifelse(Policy_Sales_Channel == 60, 1, 0),
+                             Policy_Sales_Channel_61 = ifelse(Policy_Sales_Channel == 61, 1, 0),
+                             Policy_Sales_Channel_62 = ifelse(Policy_Sales_Channel == 62, 1, 0),
+                             Policy_Sales_Channel_63 = ifelse(Policy_Sales_Channel == 63, 1, 0),
+                             Policy_Sales_Channel_64 = ifelse(Policy_Sales_Channel == 64, 1, 0),
+                             Policy_Sales_Channel_65 = ifelse(Policy_Sales_Channel == 65, 1, 0),
+                             Policy_Sales_Channel_66 = ifelse(Policy_Sales_Channel == 66, 1, 0),
+                             Policy_Sales_Channel_67 = ifelse(Policy_Sales_Channel == 67, 1, 0),
+                             Policy_Sales_Channel_68 = ifelse(Policy_Sales_Channel == 68, 1, 0),
+                             Policy_Sales_Channel_69 = ifelse(Policy_Sales_Channel == 69, 1, 0),
+                             Policy_Sales_Channel_70 = ifelse(Policy_Sales_Channel == 70, 1, 0),
+                             Policy_Sales_Channel_71 = ifelse(Policy_Sales_Channel == 71, 1, 0),
+                             Policy_Sales_Channel_73 = ifelse(Policy_Sales_Channel == 73, 1, 0),
+                             Policy_Sales_Channel_74 = ifelse(Policy_Sales_Channel == 74, 1, 0),
+                             Policy_Sales_Channel_75 = ifelse(Policy_Sales_Channel == 75, 1, 0),
+                             Policy_Sales_Channel_76 = ifelse(Policy_Sales_Channel == 76, 1, 0),
+                             Policy_Sales_Channel_78 = ifelse(Policy_Sales_Channel == 78, 1, 0),
+                             Policy_Sales_Channel_79 = ifelse(Policy_Sales_Channel == 79, 1, 0),
+                             Policy_Sales_Channel_80 = ifelse(Policy_Sales_Channel == 80, 1, 0),
+                             Policy_Sales_Channel_81 = ifelse(Policy_Sales_Channel == 81, 1, 0),
+                             Policy_Sales_Channel_82 = ifelse(Policy_Sales_Channel == 82, 1, 0),
+                             Policy_Sales_Channel_83 = ifelse(Policy_Sales_Channel == 83, 1, 0),
+                             Policy_Sales_Channel_84 = ifelse(Policy_Sales_Channel == 84, 1, 0),
+                             Policy_Sales_Channel_86 = ifelse(Policy_Sales_Channel == 86, 1, 0),
+                             Policy_Sales_Channel_87 = ifelse(Policy_Sales_Channel == 87, 1, 0),
+                             Policy_Sales_Channel_88 = ifelse(Policy_Sales_Channel == 88, 1, 0),
+                             Policy_Sales_Channel_89 = ifelse(Policy_Sales_Channel == 89, 1, 0),
+                             Policy_Sales_Channel_90 = ifelse(Policy_Sales_Channel == 90, 1, 0),
+                             Policy_Sales_Channel_91 = ifelse(Policy_Sales_Channel == 91, 1, 0),
+                             Policy_Sales_Channel_92 = ifelse(Policy_Sales_Channel == 92, 1, 0),
+                             Policy_Sales_Channel_93 = ifelse(Policy_Sales_Channel == 93, 1, 0),
+                             Policy_Sales_Channel_94 = ifelse(Policy_Sales_Channel == 94, 1, 0),
+                             Policy_Sales_Channel_95 = ifelse(Policy_Sales_Channel == 95, 1, 0),
+                             Policy_Sales_Channel_96 = ifelse(Policy_Sales_Channel == 96, 1, 0),
+                             Policy_Sales_Channel_97 = ifelse(Policy_Sales_Channel == 97, 1, 0),
+                             Policy_Sales_Channel_98 = ifelse(Policy_Sales_Channel == 98, 1, 0),
+                             Policy_Sales_Channel_99 = ifelse(Policy_Sales_Channel == 99, 1, 0),
+                             Policy_Sales_Channel_100 = ifelse(Policy_Sales_Channel == 100, 1, 0),
+                             Policy_Sales_Channel_101 = ifelse(Policy_Sales_Channel == 101, 1, 0),
+                             Policy_Sales_Channel_102 = ifelse(Policy_Sales_Channel == 102, 1, 0),
+                             Policy_Sales_Channel_103 = ifelse(Policy_Sales_Channel == 103, 1, 0),
+                             Policy_Sales_Channel_104 = ifelse(Policy_Sales_Channel == 104, 1, 0),
+                             Policy_Sales_Channel_105 = ifelse(Policy_Sales_Channel == 105, 1, 0),
+                             Policy_Sales_Channel_106 = ifelse(Policy_Sales_Channel == 106, 1, 0),
+                             Policy_Sales_Channel_107 = ifelse(Policy_Sales_Channel == 107, 1, 0),
+                             Policy_Sales_Channel_108 = ifelse(Policy_Sales_Channel == 108, 1, 0),
+                             Policy_Sales_Channel_109 = ifelse(Policy_Sales_Channel == 109, 1, 0),
+                             Policy_Sales_Channel_110 = ifelse(Policy_Sales_Channel == 110, 1, 0),
+                             Policy_Sales_Channel_111 = ifelse(Policy_Sales_Channel == 111, 1, 0),
+                             Policy_Sales_Channel_112 = ifelse(Policy_Sales_Channel == 112, 1, 0),
+                             Policy_Sales_Channel_113 = ifelse(Policy_Sales_Channel == 113, 1, 0),
+                             Policy_Sales_Channel_114 = ifelse(Policy_Sales_Channel == 114, 1, 0),
+                             Policy_Sales_Channel_115 = ifelse(Policy_Sales_Channel == 115, 1, 0),
+                             Policy_Sales_Channel_116 = ifelse(Policy_Sales_Channel == 116, 1, 0),
+                             Policy_Sales_Channel_117 = ifelse(Policy_Sales_Channel == 117, 1, 0),
+                             Policy_Sales_Channel_118 = ifelse(Policy_Sales_Channel == 118, 1, 0),
+                             Policy_Sales_Channel_119 = ifelse(Policy_Sales_Channel == 119, 1, 0),
+                             Policy_Sales_Channel_120 = ifelse(Policy_Sales_Channel == 120, 1, 0),
+                             Policy_Sales_Channel_121 = ifelse(Policy_Sales_Channel == 121, 1, 0),
+                             Policy_Sales_Channel_122 = ifelse(Policy_Sales_Channel == 122, 1, 0),
+                             Policy_Sales_Channel_123 = ifelse(Policy_Sales_Channel == 123, 1, 0),
+                             Policy_Sales_Channel_124 = ifelse(Policy_Sales_Channel == 124, 1, 0),
+                             Policy_Sales_Channel_125 = ifelse(Policy_Sales_Channel == 125, 1, 0),
+                             Policy_Sales_Channel_126 = ifelse(Policy_Sales_Channel == 126, 1, 0),
+                             Policy_Sales_Channel_127 = ifelse(Policy_Sales_Channel == 127, 1, 0),
+                             Policy_Sales_Channel_128 = ifelse(Policy_Sales_Channel == 128, 1, 0),
+                             Policy_Sales_Channel_129 = ifelse(Policy_Sales_Channel == 129, 1, 0),
+                             Policy_Sales_Channel_130 = ifelse(Policy_Sales_Channel == 130, 1, 0),
+                             Policy_Sales_Channel_131 = ifelse(Policy_Sales_Channel == 131, 1, 0),
+                             Policy_Sales_Channel_132 = ifelse(Policy_Sales_Channel == 132, 1, 0),
+                             Policy_Sales_Channel_133 = ifelse(Policy_Sales_Channel == 133, 1, 0),
+                             Policy_Sales_Channel_134 = ifelse(Policy_Sales_Channel == 134, 1, 0),
+                             Policy_Sales_Channel_135 = ifelse(Policy_Sales_Channel == 135, 1, 0),
+                             Policy_Sales_Channel_136 = ifelse(Policy_Sales_Channel == 136, 1, 0),
+                             Policy_Sales_Channel_137 = ifelse(Policy_Sales_Channel == 137, 1, 0),
+                             Policy_Sales_Channel_138 = ifelse(Policy_Sales_Channel == 138, 1, 0),
+                             Policy_Sales_Channel_139 = ifelse(Policy_Sales_Channel == 139, 1, 0),
+                             Policy_Sales_Channel_140 = ifelse(Policy_Sales_Channel == 140, 1, 0),
+                             Policy_Sales_Channel_143 = ifelse(Policy_Sales_Channel == 143, 1, 0),
+                             Policy_Sales_Channel_144 = ifelse(Policy_Sales_Channel == 144, 1, 0),
+                             Policy_Sales_Channel_145 = ifelse(Policy_Sales_Channel == 145, 1, 0),
+                             Policy_Sales_Channel_146 = ifelse(Policy_Sales_Channel == 146, 1, 0),
+                             Policy_Sales_Channel_147 = ifelse(Policy_Sales_Channel == 147, 1, 0),
+                             Policy_Sales_Channel_148 = ifelse(Policy_Sales_Channel == 148, 1, 0),
+                             Policy_Sales_Channel_149 = ifelse(Policy_Sales_Channel == 149, 1, 0),
+                             Policy_Sales_Channel_150 = ifelse(Policy_Sales_Channel == 150, 1, 0),
+                             Policy_Sales_Channel_151 = ifelse(Policy_Sales_Channel == 151, 1, 0),
+                             Policy_Sales_Channel_152 = ifelse(Policy_Sales_Channel == 152, 1, 0),
+                             Policy_Sales_Channel_153 = ifelse(Policy_Sales_Channel == 153, 1, 0),
+                             Policy_Sales_Channel_154 = ifelse(Policy_Sales_Channel == 154, 1, 0),
+                             Policy_Sales_Channel_155 = ifelse(Policy_Sales_Channel == 155, 1, 0),
+                             Policy_Sales_Channel_156 = ifelse(Policy_Sales_Channel == 156, 1, 0),
+                             Policy_Sales_Channel_157 = ifelse(Policy_Sales_Channel == 157, 1, 0),
+                             Policy_Sales_Channel_158 = ifelse(Policy_Sales_Channel == 158, 1, 0),
+                             Policy_Sales_Channel_159 = ifelse(Policy_Sales_Channel == 159, 1, 0),
+                             Policy_Sales_Channel_160 = ifelse(Policy_Sales_Channel == 160, 1, 0),
+                             Policy_Sales_Channel_163 = ifelse(Policy_Sales_Channel == 163, 1, 0))
+```
+Exploratory Analysis
+```{r}
+# Gender vs. Response
+ggplot(ins, aes(x = Gender, fill = Response)) +
+  geom_bar(position = 'dodge') + 
+  scale_fill_discrete(name = "Reponse", labels = c('Not Interested', 'Interested')) +
+  scale_y_continuous(breaks = seq(0, 200000, 25000)) +
+  geom_text(aes(label=scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..]) ),
+            stat="count", position=position_dodge(.9), vjust=-0.25) +
+  labs(title = 'Interest in Vehicle Insurance by Gender' ) +
+  theme_bw()
+
+# Vehicle Age vs. Response
+ins$Vehicle_Age <- factor(ins$Vehicle_Age, levels = c('< 1 Year', '1-2 Year', '> 2 Years'))
+ggplot(ins, aes(x = Vehicle_Age, fill = Response)) +
+  geom_bar(position = 'dodge') + 
+  scale_fill_discrete(name = "Reponse", labels = c('Not Interested', 'Interested')) +
+  scale_y_continuous(breaks = seq(0, 200000, 25000)) +
+  geom_text(aes(label=scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..]) ),
+            stat="count", position=position_dodge(.9), vjust=-0.25) +
+  ggtitle('Interest in Vehicle Insurance by Vehicle Age') +
+  xlab('Vehicle Age') +
+  theme_bw()
+
+# Age distribution of policyholders
+ggplot(ins, aes(x = Age)) +
+  geom_density(aes(color = Gender)) +
+  theme_bw()
+
+ggplot(ins, aes(x = Age, color = Gender)) +
+  geom_boxplot()
+
+# Vehicle Damage vs. Response
+ggplot(ins, aes(x = Response, fill = Vehicle_Damage)) +
+  geom_bar(position = 'dodge') + 
+  scale_fill_discrete(name = "Vehicle Damage", labels = c('No', 'Yes')) +
+  scale_y_continuous(breaks = seq(0, 200000, 25000)) +
+  geom_text(aes(label=scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..]) ),
+            stat="count", position=position_dodge(.9), vjust=-0.25) +
+  labs(title = 'Interest in Vehicle Insurance by Vehicle Damage in the Past') +
+  ylab('Vehicle Damage') + xlab('Response') +
+  scale_x_discrete(labels = c('Not Interested', 'Interested')) +
+  theme_bw()
+```
+Predictive Analysis
+```{r}
+train_rows = createDataPartition(y = ins_binary$Response, p = 0.70, list = FALSE)
+ins_train = ins_binary[train_rows,]
+ins_test = ins_binary[-train_rows,]
+```
+Check percentage of positive responses in the training dataset
+```{r}
+imbalanceRatio(ins_train, classAttr = 'Response')
+```
+Decision Tree without balancing training dataset
+```{r}
+tree = rpart(Response ~ ., data  = ins_train[c(2:4, 6:9, 11,12:221)],
+             method = 'both',
+             parms = list(split = 'information'),
+             control = list(minsplit = 10,
+                            maxdepth = 5,
+                            cp = 0.0001))
+prp(tree, varlen = 0)
+```
+Undersampling
+```{r}
+pos <- which(ins_train$Response == '1')
+neg <- which(ins_train$Response == '0')
+pos_sample <- sample(pos, 30000)
+neg_sample <- sample(neg, 30000)
+
+ins_train_undersample <- ins_train[c(pos_sample,neg_sample), ]
+```
+Decision Tree after undersampling
+```{r}
+ins_train_undersample
+tree = rpart(Response ~ ., data  = ins_train_undersample[c(2:4, 6:9, 11,12:221)],
+             method = 'class',
+             parms = list(split = 'information'),
+             control = list(minsplit = 5,
+                            maxdepth = 5,
+                            cp = 0.001))
+pred_tree = predict(tree, newdata = ins_test[c(2:4, 6:9, 11,12:221)], type = 'class')
+pred_tree1 = predict(tree, newdata=ins_test[c(2:4, 6:9, 11,12:221)])
+confusionMatrix(data = pred_tree,
+                reference = ins_test$Response,
+                mode = 'prec_recall',
+                positive = '1')
+roc.curve(ins_test$Response, pred_tree, plotit = TRUE)
+pred_tree
+ins_test
+
+test_roc = ins_test %>%
+    mutate(prob = pred_tree1[,2]) %>%
+    arrange(desc(prob)) %>%
+    mutate(response_yes = as.numeric(ins_test$Response) - 1) %>%
+    mutate(TPR = cumsum(response_yes)/sum(response_yes),
+           FPR = cumsum(1-response_yes)/sum(1-response_yes))
+
+ggplot(data = test_roc, aes(x = FPR, y = TPR)) +
+    geom_line() +
+    theme_bw()
+
+test_crc = ins_test %>%
+    mutate(prob = pred_tree1[,2]) %>%
+    mutate(response_yes = as.numeric(ins_test$Response) - 1) %>%
+    arrange(desc(prob)) %>%
+    
+    mutate(y = cumsum(response_yes)/sum(response_yes),
+           x = row_number()/nrow(ins_test))
+ggplot(data = test_crc, aes(x = x, y = y)) +
+    geom_line() +
+    labs(title = "Cumulative Response Curve", x = "Top percent of most likely interested customers", y = 
+             "Percentage of actual interested customers") +
+    theme_bw() +
+    scale_x_continuous(breaks = seq(0,1,.2)) +
+    scale_y_continuous(breaks = seq(0,1,.2))
+prp(tree, varlen = 0)
+```
+Random Forest
+```{r}
+# Initialize
+# rf <- randomForest(
+#  Response ~ .,
+#  data=ins_normalized_train_undersample[c(2:4, 6:9, 11,12:221)]
+# )
+# rf
+# pred_rf = predict(rf, ins_normalized_test[c(2:4, 6:9, 11,13:221)])
+# ins_normalized_test[c(2:4, 6:9, 11,13:221)]
+# ins_normalized_test[,12]
+# table(observed = ins_normalized_test[,12], predicted = pred_rf)
+# precision()
+```
+
+```{r}
+ins <- ins %>%
+  as_tibble() %>%
+  mutate(AnnualPremiumUS = ins$Annual_Premium*.014)
+
+```
